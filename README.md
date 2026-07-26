@@ -1,80 +1,99 @@
-# Task Management REST API — Django
+# Task Manager REST API
 
-A Django REST Framework microservice for managing tasks — full CRUD, JWT authentication, pagination, filtering, and search. Django/DRF counterpart to the Spring Boot task-manager-api project.
+A full-featured task management REST API built with Django and Django REST Framework, featuring JWT authentication, filtering, pagination, and a complete admin interface. Deployed live on Render with PostgreSQL.
+
+**Live API:** https://task-manager-django-api-rmyj.onrender.com
+**API Docs (Swagger):** https://task-manager-django-api-rmyj.onrender.com/api/docs/
+**Admin Panel:** https://task-manager-django-api-rmyj.onrender.com/admin/
+
+> Note: hosted on Render's free tier, so the first request after inactivity may take up to 50 seconds while the instance spins back up.
+
+---
 
 ## Tech Stack
-- Django 5 + Django REST Framework
-- JWT auth via djangorestframework-simplejwt (access + refresh tokens, blacklist on logout)
-- django-filter for query filtering, DRF SearchFilter/OrderingFilter
-- SQLite by default, drop-in Postgres via env vars
-- Swagger docs via drf-yasg
 
-## Architecture
-Layered like the Spring Boot version — models (entity/repository layer) then serializers (DTO/validation layer) then views (controller/service layer), with permissions.py enforcing per-user ownership and pagination.py / filters.py as shared concerns.
+- **Backend:** Django 5.0, Django REST Framework
+- **Auth:** JWT (djangorestframework-simplejwt) — access + refresh tokens, blacklisting on logout
+- **Database:** PostgreSQL (production), SQLite (local dev)
+- **Docs:** drf-yasg (Swagger / OpenAPI)
+- **Filtering & Pagination:** django-filter, custom pagination class
+- **Deployment:** Render, Gunicorn, WhiteNoise for static files
 
-- taskmanager/ — project settings, root urls
-- accounts/ — registration, login, profile, JWT issuance
-- tasks/ — Task & Category models, views, serializers, filters
+## Key Features
 
-## Setup
+- **JWT Authentication** — register, login, token refresh, token verify, logout with blacklisting
+- **Full CRUD** for Tasks and Categories, scoped per authenticated user
+- **Task workflow actions** — mark complete, reopen, list overdue tasks, dashboard stats
+- **Filtering, search, and ordering** on task list endpoints
+- **Pagination** on all list endpoints
+- **Rate limiting** — throttling for authenticated and anonymous users
+- **Custom exception handling** for consistent API error responses
+- **Django Admin** fully configured for Tasks and Categories with list filters and search
 
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    cp .env.example .env
-    python manage.py migrate
-    python manage.py createsuperuser
-    python manage.py runserver
+## API Overview
 
-API is served at http://localhost:8000/api/. Swagger docs at /api/docs/. Django admin at /admin/.
-
-## Endpoints
-
-### Auth (/api/auth/)
-| Method | Endpoint | Description |
+| Endpoint | Method | Description |
 |---|---|---|
-| POST | /register/ | Create account, returns JWT pair |
-| POST | /login/ | Obtain access + refresh tokens |
-| POST | /login/refresh/ | Refresh an access token |
-| POST | /login/verify/ | Verify a token is valid |
-| POST | /logout/ | Blacklist refresh token |
-| GET/PUT/PATCH | /profile/ | View or update the logged-in user |
+| `/api/auth/register/` | POST | Register a new user |
+| `/api/auth/login/` | POST | Obtain JWT access & refresh tokens |
+| `/api/auth/login/refresh/` | POST | Refresh access token |
+| `/api/auth/logout/` | POST | Blacklist refresh token |
+| `/api/auth/profile/` | GET/PUT/PATCH | View or update user profile |
+| `/api/categories/` | GET/POST | List or create categories |
+| `/api/categories/{id}/` | GET/PUT/PATCH/DELETE | Manage a single category |
+| `/api/tasks/` | GET/POST | List (paginated, filterable) or create tasks |
+| `/api/tasks/{id}/` | GET/PUT/PATCH/DELETE | Manage a single task |
+| `/api/tasks/{id}/complete/` | PATCH | Mark a task as done |
+| `/api/tasks/{id}/reopen/` | PATCH | Move a task back to TODO |
+| `/api/tasks/overdue/` | GET | List tasks past due date and not done |
+| `/api/tasks/stats/` | GET | Dashboard counts by status/priority |
 
-### Categories (/api/categories/)
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | / | List your categories (paginated) |
-| POST | / | Create a category |
-| GET | /{id}/ | Retrieve a category |
-| PUT/PATCH | /{id}/ | Update a category |
-| DELETE | /{id}/ | Delete a category |
+Full interactive documentation with request/response schemas is available at `/api/docs/`.
 
-### Tasks (/api/tasks/)
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | / | List tasks — paginated, filterable, searchable |
-| POST | / | Create a task |
-| GET | /{id}/ | Retrieve a task |
-| PUT/PATCH | /{id}/ | Update a task |
-| DELETE | /{id}/ | Delete a task |
-| PATCH | /{id}/complete/ | Mark a task done |
-| PATCH | /{id}/reopen/ | Move a task back to TODO |
-| GET | /overdue/ | Tasks past due date, not done |
-| GET | /stats/ | Dashboard counts |
+## Local Setup
 
-Query params on GET /api/tasks/: status, priority, category, due_before, due_after, created_after, search, ordering, page, page_size.
+```bash
+# Clone the repo
+git clone https://github.com/kb-renuka/task-manager-django-api.git
+cd task-manager-django-api
 
-## Models
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
 
-**Task** — title, description, status (TODO/IN_PROGRESS/DONE), priority (LOW/MEDIUM/HIGH), due_date, category (FK), owner (FK to User), completed_at, timestamps.
+# Install dependencies
+pip install -r requirements.txt
 
-**Category** — name, color, owner (FK to User), unique per user.
+# Copy environment variables
+cp .env.example .env
+# Fill in SECRET_KEY and other values in .env
 
-Every task and category is scoped to its owner — users only ever see and modify their own data.
+# Run migrations
+python manage.py migrate
 
-## Testing
+# Create a superuser (for admin access)
+python manage.py createsuperuser
 
-    python manage.py test
+# Run the development server
+python manage.py runserver
+```
+
+The API will be available at `http://localhost:8000/`, with docs at `http://localhost:8000/api/docs/`.
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `SECRET_KEY` | Django secret key |
+| `DEBUG` | `True` for local dev, `False` in production |
+| `ALLOWED_HOSTS` | Comma-separated list of allowed hosts |
+| `DATABASE_URL` | PostgreSQL connection string (production) |
+| `CORS_ALLOW_ALL` | Whether to allow all CORS origins |
 
 ## Deployment
-Set DEBUG=False, a real SECRET_KEY, and proper ALLOWED_HOSTS in .env. Point DB_* at Postgres. Run with gunicorn taskmanager.wsgi:application behind your platform of choice.
+
+Deployed on [Render](https://render.com) as a web service, with a managed PostgreSQL instance. Build pipeline runs `pip install`, `collectstatic`, and `migrate` on every deploy; static files are served via WhiteNoise.
+
+## Author
+
+Built by [kb-renuka](https://github.com/kb-renuka)
